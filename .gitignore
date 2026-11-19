@@ -1,0 +1,80 @@
+# Environment and secret files
+.env
+.env.*
+!.env.example
+*.secret
+*.credentials
+credentials/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+terraform.tfvars
+terraform.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+
+# SSH keys and certificates
+*.pem
+*.key
+*.pub
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.p12
+*.pfx
+*.crt
+*.cer
+
+# Python virtual environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+dist/
+build/
+target/
+out/
+*.tar
+*.tar.gz
+*.zip
+*.jar
+*.war
+
+# Dependency and package directories
+node_modules/
+.npm/
+.cache/
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Monitoring secrets
+monitoring/**/secrets/
+monitoring/**/.env
+grafana.ini
+nagiosadmin.passwd
