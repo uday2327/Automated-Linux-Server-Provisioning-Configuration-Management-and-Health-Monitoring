@@ -1,0 +1,6 @@
+---
+- name: Validate and restart nagios
+  ansible.builtin.shell: |
+    nagios4 -v /etc/nagios4/nagios.cfg
+    systemctl restart nagios
+  changed_when: true

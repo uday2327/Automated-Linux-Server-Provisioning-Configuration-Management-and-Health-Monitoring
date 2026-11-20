@@ -1,0 +1,10 @@
+---
+- name: Configure web server
+  hosts: web
+  become: true
+  roles:
+    - common
+    - docker
+    - nginx
+    - node_exporter
+    - recovery_scripts

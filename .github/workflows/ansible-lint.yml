@@ -1,0 +1,32 @@
+name: Ansible Validation
+
+on:
+  pull_request:
+    paths:
+      - "ansible/**"
+      - "monitoring/**"
+  push:
+    branches: ["main"]
+    paths:
+      - "ansible/**"
+      - "monitoring/**"
+
+permissions:
+  contents: read
+
+jobs:
+  ansible:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ansible and required collections
+        run: |
+          python3 -m pip install --user ansible-core
+          export PATH="$HOME/.local/bin:$PATH"
+          ansible-galaxy collection install -r ansible/requirements.yml
+      - uses: ansible/ansible-lint-action@v24
+        with:
+          path: ansible
+      - run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/site.yml --syntax-check

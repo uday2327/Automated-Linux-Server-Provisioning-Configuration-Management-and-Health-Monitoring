@@ -1,5 +1,3 @@
-# GitHub Configuration
+﻿# GitHub Configuration
 
-The `workflows` directory will contain GitHub Actions validation, build, deployment and approval workflows.
-
-No workflows or GitHub remotes are configured at this stage.
+The workflows under `workflows/` validate Terraform and Ansible, test/build the application, publish the image to GHCR, and define a gated SSH deployment. Workflow execution has not been verified. Configure least-privilege permissions and required reviewers on the production environment before enabling deployment.

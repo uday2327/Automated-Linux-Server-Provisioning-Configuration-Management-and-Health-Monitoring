@@ -1,0 +1,24 @@
+---
+- name: Deploy application container
+  hosts: web
+  become: true
+  tasks:
+    - name: Create application directory
+      ansible.builtin.file:
+        path: /opt/aws-health-app
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install application Compose file
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../docker/docker-compose.yml"
+        dest: /opt/aws-health-app/docker-compose.yml
+        mode: "0644"
+
+    - name: Deploy application
+      community.docker.docker_compose_v2:
+        project_src: /opt/aws-health-app
+        pull: always
+        state: present

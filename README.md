@@ -1,729 +1,94 @@
-# AWS Automated Server Provisioning and Health Monitoring
+# AWS Linux Server Provisioning and Monitoring
 
-## 1. Project Overview
+This repository is a learning project for provisioning two Ubuntu EC2 servers with Terraform, configuring them with Ansible, deploying a small Node.js health application with Docker, and monitoring the servers with Nagios, Prometheus, Node Exporter, and Grafana.
 
-This project builds a practical AWS DevOps and Site Reliability Engineering (SRE) platform for provisioning, configuring, deploying, monitoring and recovering Linux servers.
+## Current status
 
-It uses two Ubuntu EC2 servers:
+The repository contains implementation files for the intended architecture, but it has not been deployed to AWS or verified end to end. Several settings remain examples that must be replaced with real Terraform outputs and protected local values. See the [audit](DEVOPS_PROJECT_AUDIT.md), [file inventory](docs/file-inventory.md), [validation report](docs/validation-report.md), and [remaining work](docs/remaining-work.md).
 
-| Server | Purpose | Main components |
-|---|---|---|
-| Web server | Runs the application | Ubuntu, Docker, Nginx, Node Exporter |
-| Monitoring server | Monitors both servers | Ubuntu, Nagios, Prometheus, Grafana |
-
-The project demonstrates:
-
-- AWS infrastructure provisioning with Terraform
-- Server configuration with Ansible
-- Application deployment with Docker
-- Reverse proxy configuration with Nginx
-- Source control with Git and GitHub
-- CI/CD with GitHub Actions
-- Availability monitoring with Nagios
-- Metrics collection with Prometheus
-- Metrics visualization with Grafana
-- Bash health checks and controlled recovery
-- Linux troubleshooting and incident evidence
-
-No Kubernetes, Jenkins or unrelated infrastructure technology is required for this project.
-
-## 2. Goals
-
-The completed project should allow a user to:
-
-1. Create two Ubuntu EC2 servers with Terraform.
-2. Configure the servers automatically with Ansible.
-3. Build and deploy a Docker application.
-4. Access the application through Nginx on port 80.
-5. Monitor server health with Node Exporter.
-6. Monitor application and server availability with Nagios.
-7. Scrape metrics with Prometheus.
-8. View CPU, memory, disk and network dashboards in Grafana.
-9. Run health checks and controlled recovery scripts.
-10. Simulate failures and document recovery.
-11. Validate all changes through GitHub Actions.
-
-## 3. Final Architecture
+## Architecture
 
 ```text
-GitHub
-  |
-  | push or pull request
-  v
-GitHub Actions
-  |-- Terraform format and validation
-  |-- Terraform plan
-  |-- Application tests and Docker build
-  |-- Optional approved deployment
-  |-- GHCR image push
+Developer -> GitHub -> GitHub Actions
+                         |-- validate Terraform / Ansible
+                         |-- test and publish the app image to GHCR
+                         `-- gated SSH deployment (requires repository setup)
 
-AWS
-  |
-  | Terraform
-  v
-  +--------------------------+
-  | VPC / Subnet / Route     |
-  | Internet Gateway         |
-  | Security Groups          |
-  +------------+-------------+
-               |
-       ---------------------
-       |                   |
-       v                   v
-+----------------+   +------------------+
-| Web Server     |   | Monitoring Server|
-| Ubuntu         |   | Ubuntu           |
-| Docker         |   | Nagios           |
-| Nginx          |   | Prometheus       |
-| Application    |   | Grafana          |
-| Node Exporter  |   | Node Exporter    |
-+-------+--------+   +--------+---------+
-        |                     |
-        | HTTP and metrics    |
-        +---------->----------+
+Terraform -> VPC + public subnet + Web EC2 + Monitoring EC2
+Ansible -> Docker/Nginx/app/Node Exporter on Web EC2
+        -> Node Exporter/Prometheus/Grafana/Nagios on Monitoring EC2
+Prometheus <- Node Exporter on both EC2 instances
+Grafana -> Prometheus; Nagios -> host and HTTP checks
 ```
 
-### Web server
+The web host exposes HTTP on port 80. The application container binds to host loopback on port 3000, behind Nginx. SSH and monitoring UI ports are restricted to the configured administrator CIDR. Node Exporter is reachable only from within the VPC security-group range.
 
-The web server will run:
+## Technology
 
-- Ubuntu Linux
-- Docker and Docker Compose
-- Nginx
-- The application container
-- Node Exporter
+AWS EC2, Terraform, Ansible, Ubuntu, Docker Compose, Node.js/Express, Nginx, GitHub Actions, GHCR, Nagios, Prometheus, Node Exporter, Grafana, and Bash.
 
-The application will listen on a container-only or private application port. Nginx will receive public HTTP traffic on port 80 and forward it to the application. Nginx may expose HTTPS later, but HTTPS is not required for the first working version.
-
-### Monitoring server
-
-The monitoring server will run:
-
-- Ubuntu Linux
-- Nagios
-- Prometheus
-- Grafana
-- Node Exporter
-
-Nagios will provide availability checks. Prometheus will collect time-series metrics. Grafana will query Prometheus and display dashboards.
-
-## 4. Network and Port Plan
-
-The exact ports must be verified on EC2 after deployment. The default plan is:
-
-| Service | Port | Exposure |
-|---|---:|---|
-| SSH | 22 | Approved administrator IP only |
-| HTTP application | 80 | Public if this is a portfolio demonstration |
-| HTTPS | 443 | Optional |
-| Application container | 3000 or application-selected port | Nginx and loopback/private network only |
-| Node Exporter | 9100 | Monitoring server/private subnet only |
-| Prometheus | 9090 | Monitoring server, ideally private or restricted |
-| Grafana | 3000 | Monitoring server, restricted until access is approved |
-| Nagios web interface | 80 or 443 | Monitoring server, restricted |
-
-Grafana and Nagios must not be exposed to the entire internet without a documented access restriction. Monitoring credentials must never be committed.
-
-## 5. Repository Structure
+## Repository layout
 
 ```text
-.
-├── .github/
-│   └── workflows/
-├── ansible/
-├── app/
-├── docker/
-├── docs/
-├── evidence/
-├── monitoring/
-│   ├── grafana/
-│   ├── nagios/
-│   └── prometheus/
-├── scripts/
-├── terraform/
-├── .env.example
-├── .gitignore
-├── DEVOPS_PROJECT_AUDIT.md
-└── README.md
+.github/workflows/  CI, application image, and deployment workflows
+ansible/            Inventory examples, playbooks, and server roles
+app/                Node.js health application and test
+docker/             Dockerfile and Compose definition
+docs/               Architecture, setup, troubleshooting, and audit support
+evidence/           Evidence guidance and incident template
+monitoring/         Nagios, Prometheus, and Grafana configuration
+scripts/            Health, recovery, and failure simulation helpers
+terraform/          AWS network, security groups, EC2, variables and outputs
 ```
 
-Purpose of each directory:
+## Implemented in the repository
 
-- `terraform/`: AWS provider, networking, EC2, security groups, variables, outputs and remote state.
-- `ansible/`: inventory and roles/playbooks for Ubuntu server configuration.
-- `app/`: application source code or reference to the existing application.
-- `docker/`: Dockerfile and container runtime configuration.
-- `monitoring/nagios/`: Nagios host and service configuration.
-- `monitoring/prometheus/`: Prometheus scrape configuration and alert rules.
-- `monitoring/grafana/`: Prometheus data source and dashboard provisioning.
-- `scripts/`: Bash health checks and controlled recovery scripts.
-- `docs/`: setup, architecture and troubleshooting documentation.
-- `evidence/`: command output, screenshots and incident evidence with no secrets.
-- `.github/workflows/`: GitHub Actions workflow definitions.
+- Terraform definitions for a VPC, public subnet, internet route, security groups, and two Ubuntu EC2 instances.
+- Ansible roles for base packages, Docker, Nginx, Node Exporter, Prometheus, Grafana, Nagios, and recovery scripts.
+- A small Express application with `/`, `/health`, `/api/status`, and `/metrics` endpoints.
+- A Dockerfile and Compose service with a health check and loopback-only host port binding.
+- Monitoring configuration and a Grafana dashboard definition.
+- GitHub Actions workflows for validation, application CI/image publishing, and SSH deployment.
 
-Every important directory currently contains a README describing its future purpose.
+These are checked-in configurations, not proof of a successful deployment. See the audit for limitations and unverified integrations.
 
-## 6. Components and What They Do
+## Local preparation
 
-### Terraform
+Use VS Code with Ubuntu on WSL 2 for Terraform and Ansible, and Docker Desktop with WSL integration for container work. The local audit found Windows Git, Node.js, npm, Python, Docker CLI, and Docker Compose. Terraform, Ansible, AWS CLI, `actionlint`, `promtool`, and Nagios validators were not found on the Windows PATH. Check the [beginner setup guide](docs/setup-guide.md) for exact setup and validation steps.
 
-Terraform will provision:
+## Execution outline
 
-- AWS provider configuration
-- Virtual Private Cloud and subnet
-- Internet gateway and route table
-- Security groups
-- SSH key reference or key pair
-- Web EC2 instance
-- Monitoring EC2 instance
-- Tags for ownership and environment
-- Useful outputs such as public IP addresses and instance IDs
+1. Configure AWS authentication and a restrictive administrator CIDR.
+2. Create and protect a remote Terraform state bucket before remote initialization.
+3. Review the Terraform plan, then apply only after a separate explicit approval.
+4. Fill the Ansible inventory and group variables from Terraform outputs.
+5. Run Ansible syntax checks, test SSH, and configure the servers.
+6. Build and deploy the application, then verify `/health` through Nginx.
+7. Verify Prometheus targets, Grafana data, and Nagios service checks.
+8. Configure GitHub environments and secrets before enabling the gated deployment workflow.
 
-Terraform will use variables rather than hard-coded values. AWS credentials will not be stored in Terraform files.
+Do not run `terraform apply` as part of this audit. No AWS resources have been created or tested here.
 
-Terraform state must use remote storage with encryption and locking before real infrastructure is shared or maintained.
+## Monitoring
 
-### Ansible
+Prometheus is configured to scrape Node Exporter on both hosts. Grafana's provisioned data source points to Prometheus on the monitoring host. Nagios has host and HTTP service definitions. The target addresses and server-side service configuration must be verified on real instances before these integrations can be called operational.
 
-Ansible will configure:
+## Security
 
-- Ubuntu package updates
-- Base administration packages
-- Docker
-- Nginx
-- Node Exporter
-- The selected application deployment
-- Nagios
-- Prometheus
-- Grafana
-- System service startup behavior
-- Health and recovery scripts
+Do not commit `.env`, Terraform state, local `.tfvars`, private keys, or credentials. Restrict SSH and admin interfaces to a trusted CIDR. Use GitHub OIDC for future Terraform workflows; the existing Terraform workflow is validation-only and does not authenticate to AWS. Enable required reviewers and branch restrictions for the production environment before deployment.
 
-Playbooks must be idempotent, so running them again should not make unrelated changes or fail merely because services are already configured.
+## Limitations
 
-### Docker
+- No AWS deployment, live application, CI run, or monitoring data has been verified.
+- Example inventory and target addresses need to be updated from Terraform outputs.
+- GHCR access, production environment protection, and SSH deployment secrets need configuration.
+- Terraform remote backend infrastructure does not exist; backend setup may incur AWS charges.
+- The application dependency lock file is not present, so reproducible npm installs need to be addressed before CI is relied on.
 
-Docker will package and run the application consistently. A Dockerfile should define a reproducible build, expose the required application port, and include a health check where supported.
+## Evidence
 
-Docker Compose may be used for application and supporting container configuration. Container ports must be mapped only as required.
+No live deployment evidence is included. Follow [evidence/README.md](evidence/README.md) and do not store credentials in screenshots or logs.
 
-### Nginx
+## Next steps
 
-Nginx will:
-
-- Accept HTTP traffic on port 80.
-- Forward approved requests to the application container.
-- Provide sensible proxy headers and timeout settings.
-- Support later HTTPS configuration.
-- Return a valid response for a health check.
-
-### Nagios
-
-Nagios will check:
-
-- Web server host availability
-- Monitoring server host availability
-- HTTP application availability
-- SSH or required remote service availability
-- Node Exporter availability
-- Nginx service availability
-- Prometheus and Grafana availability where practical
-
-### Prometheus
-
-Prometheus will scrape Node Exporter every 15 seconds or another documented interval. It will collect CPU, memory, disk, network and process metrics.
-
-Prometheus configuration must be validated before running. Every target should be visible and marked `UP` before metrics are considered working.
-
-### Grafana
-
-Grafana will use Prometheus as a data source and display:
-
-- CPU usage
-- Memory usage
-- Disk usage
-- Network traffic
-- Server availability
-- Node status
-- Service health
-
-Alert rules should be created only after a working metric source is verified.
-
-### Bash health checks
-
-The Bash scripts will check:
-
-- Application HTTP status
-- Nginx availability
-- Docker container status
-- Node Exporter availability
-- Critical system disk usage
-- Required monitoring services
-
-Recovery actions must be controlled:
-
-- Restart only the failed service or container.
-- Record the time, service and result.
-- Use a bounded retry count.
-- Never enter an infinite restart loop.
-- Do not restart a server automatically unless explicitly approved.
-
-## 7. Implementation Phases
-
-| Phase | Objective | Primary work |
-|---|---|---|
-| 1 | Prepare local environment | Install and verify Git, AWS CLI, Terraform, Ansible and Docker |
-| 2 | Secure AWS access | Configure temporary or Identity Center credentials and region |
-| 3 | Provision infrastructure | Add Terraform networking, EC2 and security groups |
-| 4 | Configure servers | Add Ansible inventory and playbooks |
-| 5 | Deploy application | Add Docker configuration, Nginx and application |
-| 6 | Configure CI/CD | Add GitHub Actions validation and deployment workflows |
-| 7 | Configure Nagios | Add host and service monitoring |
-| 8 | Configure metrics | Install Node Exporter and configure Prometheus |
-| 9 | Configure Grafana | Add data source, dashboards and alerts |
-| 10 | Add recovery automation | Add Bash health and recovery scripts |
-| 11 | Test failures | Stop services, block endpoints and test recovery |
-| 12 | Document evidence | Record commands, screenshots, incidents and final validation |
-
-## 8. Current Status
-
-At the current preparation stage:
-
-| Item | Status |
-|---|---|
-| Dedicated repository directory | Complete |
-| Repository correctly rooted in dedicated directory | Complete |
-| Old `docker-ci-demo` remote removed or absent | Complete |
-| Basic directory structure | Complete |
-| `.gitignore` | Complete |
-| `.env.example` | Complete |
-| Architecture README | Complete |
-| Terraform implementation | Not started |
-| Ansible implementation | Not started |
-| AWS infrastructure | Not started |
-| Docker application | Not started |
-| Nginx configuration | Not started |
-| GitHub Actions workflows | Not started |
-| Nagios | Not started |
-| Prometheus | Not started |
-| Grafana | Not started |
-| Bash recovery | Not started |
-| Failure testing | Not started |
-| Final evidence | Not started |
-
-No Terraform apply, AWS resource creation, package installation, remote configuration or push was performed during repository preparation.
-
-## 9. Local Environment Requirements
-
-The intended development environment is Windows 11 or Windows 10 with WSL 2 and Ubuntu.
-
-Required tools:
-
-| Tool | Purpose |
-|---|---|
-| Git | Version control |
-| GitHub CLI | Repository and Actions operations |
-| AWS CLI | AWS authentication and resource inspection |
-| Terraform | AWS infrastructure provisioning |
-| Ansible | Server configuration |
-| Docker Desktop | Container builds and local testing |
-| Docker Compose | Multi-container local configuration |
-| Python | Ansible and application support |
-| SSH | EC2 remote administration |
-| curl | HTTP testing |
-| jq | JSON output processing |
-
-Docker Desktop must be running, and Docker Desktop WSL integration must be enabled for Ubuntu. Installation is intentionally separate from repository preparation.
-
-## 10. AWS Setup Required
-
-Before AWS resources are created:
-
-1. Create or obtain an AWS account.
-2. Select a region close to the administrator or application users.
-3. Create an AWS Identity Center user, IAM role or approved temporary credentials.
-4. Enable multi-factor authentication where possible.
-5. Plan an SSH key strategy.
-6. Define a restrictive administrator IP address or CIDR.
-7. Define EC2 instance types and disk sizes.
-8. Choose Ubuntu LTS.
-9. Estimate monthly AWS and data-transfer costs.
-10. Create remote Terraform state storage.
-
-Do not use long-lived AWS access keys in GitHub Actions. GitHub Actions OIDC should be considered as the preferred AWS authentication method.
-
-## 11. Security Requirements
-
-Never commit:
-
-- AWS access keys
-- GitHub tokens
-- Private SSH keys
-- Passwords
-- Production `.env` files
-- Terraform state files
-- TLS private keys
-- Nagios passwords
-- Grafana passwords
-- Prometheus credentials
-- Certificates or credential bundles
-
-The repository `.gitignore` covers environment files, Terraform state and variable files, private keys, virtual environments, caches, logs and build artifacts.
-
-Required security controls:
-
-- Restrict SSH to an approved source IP.
-- Restrict monitoring ports to the monitoring server or approved IP ranges.
-- Use security groups instead of `0.0.0.0/0` wherever practical.
-- Encrypt Terraform state.
-- Enable state locking.
-- Use least-privilege IAM permissions.
-- Keep private keys outside Git.
-- Keep container ports private when Nginx is the public entry point.
-- Use separate monitoring credentials.
-- Run recovery scripts with bounded retries.
-- Review exposed ports before and after deployment.
-
-## 12. GitHub and CI/CD Plan
-
-Future GitHub Actions workflows should include:
-
-### Terraform validation workflow
-
-Triggered for relevant Terraform, Ansible or repository changes:
-
-- Check formatting
-- Initialize with a backend disabled for validation where appropriate
-- Run `terraform validate`
-- Generate a plan
-- Never expose secrets or credentials in logs
-
-### Terraform approval workflow
-
-Terraform apply must:
-
-- Require an explicit pull request or environment approval
-- Run only after validation
-- Produce a plan artifact or summary
-- Use OIDC or approved temporary credentials
-- Never run automatically for an unreviewed branch
-
-### Application workflow
-
-For application or Docker changes:
-
-- Run tests
-- Build the Docker image
-- Scan or validate the image where practical
-- Push to GHCR when configured
-- Tag the image deterministically
-
-### Deployment workflow
-
-Deployment must:
-
-- Verify the target environment
-- Approve the deployment
-- Use a noninteractive SSH or approved deployment mechanism
-- Pull a known image tag
-- Restart only the intended container
-- Verify application health through HTTP
-- Report clear failure details
-
-## 13. Required Environment Variables
-
-The [.env.example](.env.example) file contains placeholder variable names. It must not contain real secrets.
-
-It may include:
-
-- AWS region
-- AWS account ID
-- EC2 names
-- SSH user
-- SSH private-key path reference
-- Application ports
-- Nagios placeholder credentials
-- Grafana placeholder credentials
-- Prometheus and Grafana ports
-
-Real values must be supplied through protected local environment variables, approved secret stores or CI/CD secret mechanisms.
-
-## 14. Terraform Remote State Plan
-
-Before applying infrastructure:
-
-- Create an S3 bucket for Terraform state.
-- Enable bucket encryption.
-- Block public bucket access.
-- Enable bucket versioning.
-- Use state locking supported by the selected Terraform setup.
-- Restrict bucket access to the Terraform role or approved identity.
-- Never commit state or backup files.
-
-Local state may be used only for isolated initial validation. It must not be used as the project operating model.
-
-## 15. Validation and Evidence
-
-No component will be marked complete until evidence exists.
-
-Evidence for infrastructure:
-
-- `terraform fmt -check`
-- `terraform validate`
-- Terraform plan output
-- EC2 instance IDs and public IP addresses
-- Security group rules
-
-Evidence for Ansible:
-
-- Syntax-check output
-- Host connectivity output
-- Playbook execution output
-- Idempotency verification
-- Service status
-
-Evidence for Docker:
-
-- Docker build output
-- Container status
-- Container health
-- HTTP application response
-- Nginx proxy response
-
-Evidence for monitoring:
-
-- Node Exporter metrics endpoint
-- Prometheus targets marked `UP`
-- Grafana visible CPU, memory, disk and network graphs
-- Nagios host and service status
-
-Evidence for recovery:
-
-- Before-failure service status
-- Failure command
-- Detection output
-- Recovery command
-- After-recovery service status
-- Application HTTP response
-
-## 16. Failure Simulation Plan
-
-Safe failure tests should include:
-
-1. Stop the application container.
-2. Verify Nagios or the health script detects the failure.
-3. Start the container through the approved recovery script.
-4. Verify HTTP recovers.
-5. Stop Nginx.
-6. Verify the outage is detected.
-7. Restart Nginx.
-8. Verify the application and proxy are reachable.
-9. Simulate high CPU or disk pressure only in a controlled, documented manner.
-10. Record the stop, detection and recovery timestamps.
-
-Do not test destructive failures, unrelated AWS resources or public monitoring exposure without explicit approval.
-
-## 17. AWS Cost and Cleanup Awareness
-
-The project will use at least two EC2 instances and may incur:
-
-- EC2 hourly charges
-- EBS storage charges
-- Public IP and data-transfer charges
-- S3 storage and request charges
-- CloudWatch or logging charges if enabled
-- Software-related or managed-service charges if added later
-
-Costs must be checked before provisioning. AWS budgets or billing alerts should be configured when practical.
-
-Infrastructure must be stopped or destroyed only with explicit approval and only for resources created for this project.
-
-## 18. Known Remaining Work
-
-Before the project is complete, the following must be created and verified:
-
-- Terraform provider and backend configuration
-- VPC and networking
-- EC2 security groups
-- Web and monitoring EC2 instances
-- EC2 key and SSH strategy
-- Ansible inventory
-- Ansible server configuration
-- Docker application image
-- Docker Compose configuration
-- Nginx reverse proxy
-- GitHub Actions workflows
-- GHCR publishing
-- Nagios configuration
-- Prometheus configuration
-- Node Exporter installation
-- Grafana data source
-- Grafana dashboards
-- Grafana alerts
-- Bash health scripts
-- Controlled recovery scripts
-- Failure simulation evidence
-- Architecture and setup documentation
-- Final project verification
-
-## 19. Installation Summary
-
-Tools to install after approval:
-
-### Windows
-
-- Git
-- GitHub CLI
-- AWS CLI
-- Docker Desktop
-- Optional Terraform and Ansible installations
-
-### WSL Ubuntu
-
-- AWS CLI
-- Terraform
-- Ansible
-- Python 3 and virtual environment support
-- `jq`
-- `curl`
-- OpenSSH
-- Docker CLI integration through Docker Desktop
-
-### Ubuntu EC2 servers
-
-- Docker and Docker Compose
-- Nginx
-- Node Exporter
-- Nagios on the monitoring server
-- Prometheus on the monitoring server
-- Grafana on the monitoring server
-
-Packages must not be installed on the local machine or EC2 until the project phase is approved.
-
-## 20. Setup Sequence
-
-1. Verify Docker Desktop and WSL integration.
-2. Install GitHub CLI, AWS CLI, Terraform and Ansible.
-3. Authenticate GitHub CLI.
-4. Authenticate AWS CLI using temporary or approved credentials.
-5. Set the AWS region.
-6. Create remote Terraform state storage.
-7. Add and validate Terraform.
-8. Review and approve the Terraform plan.
-9. Apply Terraform only with explicit approval.
-10. Verify EC2 resources.
-11. Create or securely reference the SSH key.
-12. Add the Ansible inventory.
-13. Run Ansible syntax and connectivity checks.
-14. Configure both servers.
-15. Add and build the application container.
-16. Configure Nginx.
-17. Verify HTTP.
-18. Add GitHub Actions workflows.
-19. Deploy safely.
-20. Configure monitoring.
-21. Configure dashboards and alerts.
-22. Add health and recovery scripts.
-23. Perform failure testing.
-24. Record evidence and finalize documentation.
-
-## 21. Common Errors and Troubleshooting
-
-### SSH connection refused
-
-- Verify EC2 instance status.
-- Verify security group port 22.
-- Verify the administrator IP.
-- Verify the private key and public key.
-- Verify Ubuntu SSH service status.
-
-### Terraform authentication failure
-
-- Verify AWS CLI authentication.
-- Verify AWS region configuration.
-- Verify IAM permissions.
-- Never print secrets in logs.
-
-### Docker daemon unavailable
-
-- Start Docker Desktop.
-- Enable WSL integration.
-- Switch to the Docker Desktop Linux context.
-- Re-run `docker version`.
-
-### Ansible cannot connect
-
-- Verify inventory IP addresses.
-- Verify SSH key permissions.
-- Verify security group access.
-- Test `ssh ubuntu@PUBLIC_IP`.
-
-### Application unavailable
-
-- Check the container status.
-- Check Docker logs.
-- Check Nginx status.
-- Check Nginx configuration.
-- Check the application port.
-- Request the application through `curl`.
-
-### Prometheus target is down
-
-- Verify Node Exporter is running.
-- Verify port 9100.
-- Verify security group access.
-- Verify the target address.
-- Inspect Prometheus logs.
-
-### Grafana has no data
-
-- Verify the Prometheus data source URL.
-- Verify Prometheus is reachable.
-- Verify at least one target is `UP`.
-- Verify the dashboard query.
-- Verify the selected time range.
-
-### Nagios reports an unknown or unreachable service
-
-- Verify host connectivity.
-- Verify Nagios configuration syntax.
-- Verify monitoring plugins.
-- Verify service command and timeout.
-- Inspect Nagios logs.
-
-## 22. Definition of Done
-
-The project is complete when:
-
-- Both EC2 instances exist and are reachable.
-- Terraform state is remote and protected.
-- Ansible completes repeatedly without unintended drift.
-- Docker application builds and runs.
-- Nginx serves the application over HTTP.
-- Node Exporter exposes metrics.
-- Prometheus shows both Node Exporter targets as `UP`.
-- Grafana displays CPU, memory, disk, network and availability data.
-- Nagios detects host and application availability.
-- Health scripts log bounded results.
-- Recovery scripts recover a stopped application safely.
-- A failure test is documented.
-- GitHub Actions validation and deployment controls work.
-- A README, architecture, setup, troubleshooting and evidence exist.
-- No secrets or private keys are present in Git.
-
-## 23. Repository Preparation Constraints
-
-The repository preparation stage does not include implementation of:
-
-- Terraform resources
-- Ansible playbooks
-- Docker builds
-- Application source
-- Nginx configuration
-- AWS accounts or resources
-- Monitoring services
-- Bash recovery behavior
-- GitHub Actions workflows
-- Git remotes or pushes
-
-Implementation should proceed one phase at a time after approval.
+Start with [docs/setup-guide.md](docs/setup-guide.md), then use [docs/remaining-work.md](docs/remaining-work.md) as the implementation checklist.

@@ -1,5 +1,3 @@
-# Grafana
+﻿# Grafana
 
-This directory will contain the Prometheus data source, dashboard provisioning and alert configuration.
-
-No Grafana implementation files are created at this stage.
+Provisioning declares a local Prometheus data source and a file-based system-health dashboard. PromQL panels cover CPU, memory, disk, network, uptime, and target availability. The dashboard and datasource files parsed, but Grafana was not started and metric display is unverified.

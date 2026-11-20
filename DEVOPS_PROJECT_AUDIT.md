@@ -1,329 +1,119 @@
-# AWS DevOps and SRE Project Audit
+# Final Project Audit
 
 **Audit date:** 2026-11-19
-**Operating system:** Windows
-**Development target:** WSL 2 Ubuntu
-**Target project folder:** `C:\Users\dixit\OneDrive\Desktop\aws automated server provision and health services`
+**Workspace:** `aws automated server provision and health services`
+**Branch:** `main` (preserved)
+**Scope:** Static review and safe local validation only. No AWS resources or remote servers were touched.
 
-## A. Complete Project Structure
+## Executive summary
 
-The requested project folder exists but contains no project files.
+The repository has a coherent two-instance AWS design and contains substantial Terraform, Ansible, application, container, workflow, and monitoring configuration. It is **READY WITH BLOCKERS** for controlled implementation preparation, not ready for AWS deployment: no live resources or end-to-end results were verified; example addresses and backend values need configuration; several external account and workflow settings remain; and Terraform, Ansible, AWS CLI, and monitoring validators are unavailable in the local Windows PATH.
 
-```text
-C:\Users\dixit\OneDrive\Desktop\aws automated server provision and health services\
-```
+## Actual architecture
 
-The actual Git repository is rooted at `C:\Users\dixit`, not in the requested project folder:
+Terraform defines an Ubuntu 24.04 web EC2 and monitoring EC2 in one public subnet. Ansible configures Docker/Nginx/app/Node Exporter on the web host and Node Exporter/Prometheus/Grafana/Nagios on the monitoring host. Prometheus scrapes Node Exporter on each host; Grafana queries local Prometheus; Nagios checks host availability and web endpoints. GitHub Actions contains Terraform validation, app build/test/image publication, Ansible validation, and an SSH deployment workflow. These are repository definitions only; no workflow, server, or metric integration was observed live.
 
-```text
-C:\Users\dixit\
-└── myproject\
-    └── file.txt
-```
+## Terraform inventory and simplification
 
-No separate DevOps project structure currently exists.
+The original Terraform directory contained 11 files: `backend.hcl.example`, `backend.tf`, `compute.tf`, `network.tf`, `outputs.tf`, `providers.tf`, `README.md`, `security.tf`, `terraform.tfvars.example`, `variables.tf`, and `versions.tf`. All remain. No duplicate resource definitions, modules, locals, or unused input variables were found. The unused `vpc_id` and `public_subnet_id` outputs were removed. EC2 Name tags now include `project_name`.
 
-## B. Existing Implementation Audit
+The final Terraform inventory is the same set of 11 paths. S3 native `use_lockfile` replaces deprecated DynamoDB locking in the example; Terraform minimum version is 1.10.0. `admin_cidr` validation rejects invalid IPv4 and the unrestricted `0.0.0.0/0` value. CI pins Terraform 1.10.5 and performs validation only. A provider lock file does not exist yet because Terraform is unavailable locally; `.gitignore` allows it to be committed.
 
-| Component | Expected | Current status | Evidence | Missing work |
-|---|---|---|---|---|
-| Terraform | AWS infrastructure | NOT IMPLEMENTED | No `.tf` files or modules found | Providers, networking, EC2, security groups, variables, outputs and state |
-| Ansible | Server configuration | NOT IMPLEMENTED | No inventory or playbooks found | Both-server configuration and verification |
-| AWS | Two EC2 instances | NOT IMPLEMENTED | AWS CLI missing; no evidence of AWS resources | AWS access, EC2 resources and verification |
-| Docker | Application deployment | IMPLEMENTED BUT NOT TESTED | Docker client and Compose are installed | Docker engine is stopped; application image and Compose configuration missing |
-| Nginx | Web serving | NOT IMPLEMENTED | No Nginx configuration found | Installation, proxy configuration and HTTP verification |
-| GitHub | Repository and branches | PARTIALLY IMPLEMENTED | Origin configured; branch `mybranch`; commit `417341f` | Project content and dedicated repository location |
-| GitHub Actions | CI/CD workflows | NOT IMPLEMENTED | No repository workflow files found | Validation, approval, build and deployment workflows |
-| Nagios | Availability monitoring | NOT IMPLEMENTED | No configuration or installation evidence | Server and application checks |
-| Prometheus | Metrics collection | NOT IMPLEMENTED | No Prometheus configuration found | Node Exporter and scrape configuration |
-| Grafana | Dashboards | NOT IMPLEMENTED | No provisioning or dashboards found | Data source, dashboards and alerts |
-| Bash | Health and recovery | NOT IMPLEMENTED | No health-check scripts found | Health checks, controlled recovery and logs |
-| Documentation | Setup and evidence | NOT IMPLEMENTED | No README or documentation found | Architecture, setup, validation and incident evidence |
+## File inventory
 
-Repository evidence:
+The full path-by-path inventory, status, references, and actions is in [docs/file-inventory.md](docs/file-inventory.md). No project file was removed. The final worktree contains 77 files across 44 non-Git directories; none are empty. Five files were added for Ansible collection requirements and audit/setup deliverables. Existing directories are purposeful.
 
-- Remote: `https://github.com/uday2327/docker-ci-demo.git`
-- Branch: `mybranch`
-- Latest commit: `417341f 2nd`
-- Tracked file: `myproject/file.txt`
-- Tracked worktree changes: none
-- Repository root: `C:\Users\dixit`
-- There is no README or project documentation.
+## Review findings and actions
 
-## C. Local Tool Installation and Version Report
+| Severity | Finding | Action/status |
+|---|---|---|
+| High | `site.yml` omitted the app deployment play | Fixed by importing `deploy_app.yml` after web preparation |
+| High | Prometheus and Nagios IPs were literal placeholders, not template expressions | Fixed to use Ansible variables; values still require real Terraform outputs |
+| Medium | Web security group had a loopback-only ingress rule for app port 3000, which is not an external path | Removed; Docker continues to publish only on host loopback |
+| Medium | App Compose setting and `.env.example` were inconsistent/duplicated | Compose supports `APP_PORT` with a default and `.env.example` now contains only that optional variable |
+| Medium | `.gitignore` ignored Terraform provider lock file | Removed that ignore rule so the generated lock file can be committed |
+| Medium | Bash scripts were CRLF and failed `bash -n` | Converted line endings to LF; syntax checks pass after correction |
+| Medium | App workflow previously used `npm ci` without a committed lock; changed to `npm install`, which remains less reproducible until a lock file is added | Workflow changed to `npm install`; add a lock file for reproducibility |
+| Medium | SSH deployment assumes a prepared remote directory, Compose file and GHCR pull access | Not verified; configure and protect the GitHub production environment before enabling |
+| Medium | Terraform S3 backend is a stub; example uses deprecated DynamoDB locking | Kept backend infrastructure uncreated; use S3 native `use_lockfile` for a future setup, with bucket versioning and access controls. [HashiCorp S3 backend docs](https://developer.hashicorp.com/terraform/language/backend/s3) |
+| Low | Several README files still describe components as future work | Root README and architecture doc now describe discovered configuration; per-folder notes are retained and may still need harmonization |
+| Low | `.env.example` had duplicated names and values from earlier edits | Reduced to the optional `APP_PORT` value; no secrets |
+| Informational | `DEVOPS_PROJECT_AUDIT.md` originally described a different empty repository | Replaced with this current audit |
 
-| Tool | Windows status | Version | WSL Ubuntu status |
-|---|---|---|---|
-| Git | Accessible | 2.51.0.windows.2 | 2.43.0 |
-| GitHub CLI | Missing | Not installed | Not checked or installed |
-| AWS CLI | Missing | Not installed | Not checked |
-| Terraform | Missing | Not installed | Not checked |
-| Ansible | Missing | Not installed | Not checked |
-| Docker Desktop | Installed | 28.5.1 | Docker Desktop WSL distribution stopped |
-| Docker Compose | Accessible | v2.40.2-desktop.1 | Not checked |
-| Python | Accessible | 3.11.3 for Windows | 3.12.3 |
-| SSH | Accessible | OpenSSH_9.6p1 | OpenSSH_9.6p1 |
-| curl | Missing from Windows PATH | Not available | 8.5.0 |
-| jq | Missing | Not installed | Missing in Ubuntu |
-| WSL | Accessible | Ubuntu WSL 2 | Ubuntu default stopped |
+### Kept files
 
-Docker validation:
+All original files were retained, including short directory README files, `commands.cfg`, sample configs, evidence templates, and the older setup/runbook materials. Their small size or possible redundancy was not sufficient reason to delete user work. No evidence artifacts were present beyond templates and guidance.
 
-- Docker client and Compose are installed.
-- The Docker engine could not connect to `desktop-linux`.
-- Docker Desktop and WSL integration are stopped.
-- No application container build or container execution was attempted.
-
-## D. Security Findings
-
-1. **Private SSH key found outside the target project**
-
-   `C:\Users\dixit\my-jenkins-key`
-
-   Do not commit or copy this key into the project. Verify its purpose and permissions before use.
-
-2. **Weak repository ignore rules**
-
-   The repository `.gitignore` contains only `node_modules`.
-
-   It does not exclude Terraform state, `.tfvars`, `.env`, SSH keys, certificates or monitoring secrets.
-
-3. **Terraform state management missing**
-
-   No Terraform state backend or project `.tfstate` files were found in the inspected project. Remote state must be implemented securely before real infrastructure is provisioned.
-
-4. **AWS credentials unverified**
-
-   AWS CLI is missing. Authentication and region configuration cannot be audited until it is installed.
-
-5. **GitHub authentication unverified**
-
-   GitHub CLI is missing. Workflow permissions and secrets cannot be audited through the CLI.
-
-6. **Docker configuration missing**
-
-   Docker Desktop is stopped. No Dockerfile, Compose file or exposed-container configuration exists.
-
-7. **Repository location risk**
-
-   The repository root is `C:\Users\dixit`, so creating project files there could track unrelated user-profile content.
-
-## E. Terraform, Ansible, Docker and GitHub Validation Findings
+## Component audit
 
 ### Terraform
 
-- Syntax validation: not performed; no files exist.
-- Formatting validation: not performed.
-- Initialization: not performed.
-- AWS plan: not performed.
-- Apply: not performed.
-- State backend: not implemented.
+Provider region and default tags are variable-driven. Configuration defines a VPC, public subnet, internet gateway/route, security groups, key pair, and two EC2 instances. Ubuntu AMI selection uses Canonical owner ID and a Noble 24.04 name filter. IMDSv2 is required and EBS roots are encrypted. SSH and monitoring ingress use `admin_cidr`; HTTP is public on the web host; exporter access is allowed from the VPC CIDR. The loopback-only application security-group rule was removed as unnecessary.
+
+The S3 backend block is intentionally incomplete. The example now uses S3 native `use_lockfile`; create and protect the bucket separately. Terraform minimum version is 1.10.0 to support native S3 locking. Do not configure a paid backend or apply resources during this audit. A committed `.terraform.lock.hcl` should be generated during Terraform initialization and retained. Input variables are all referenced; there are no modules/locals. The VPC and subnet outputs were unused and removed.
 
 ### Ansible
 
-- Inventory: missing.
-- Playbooks and roles: missing.
-- Syntax validation: not possible.
-- Connectivity test: not possible.
+Inventory examples separate web and monitoring groups. Terraform outputs are not automatically converted into inventory. `site.yml` now configures web, deploys the application, then configures monitoring. Roles reference example group variables and need an operator-created `all.yml`. They have not received syntax validation because Ansible is unavailable. Some tasks use absolute references derived from `playbook_dir`; these remain unverified by Ansible.
 
-### Docker
+### Application and Docker
 
-- Docker client: accessible.
-- Docker Compose: accessible.
-- Docker engine: not running.
-- `docker compose config`: not performed because no Compose file exists.
-- Application build: not performed.
+The Express app listens on 3000 and exposes health/status/metrics routes. Docker builds from repository root using `docker/Dockerfile`, installs Express, runs as a non-root user, and has a health check. Compose publishes `127.0.0.1:3000:3000`, matching Nginx's upstream and limiting direct external access. Docker Compose config validation passed. No image build or container start was performed. A package lock is absent, so the CI workflow uses `npm install`; add a reviewed lock file before relying on reproducible CI.
 
-### GitHub
+### GitHub Actions
 
-- Remote repository: confirmed.
-- Branch: confirmed.
-- No workflow YAML files were found.
-- No GitHub Actions history could be verified.
-- GitHub CLI is missing, preventing authentication and secrets inspection.
+All workflow files are under `.github/workflows`. Terraform workflow is validation-only and has read-only contents permission. App workflow tests and publishes to GHCR, then deploys over SSH on main pushes under a `production` environment. The environment must be configured with required reviewers and branch restrictions; SSH host/user/key and GHCR pull access remain external requirements. Workflow permissions need tightening by separating read-only test work from package-write publication. No AWS OIDC workflow exists; no Terraform apply workflow is present, which avoids unreviewed infrastructure changes.
 
-## F. Nagios, Prometheus and Grafana Status
+### Monitoring
 
-All monitoring components are **not implemented and unverified**:
+Prometheus has a 15-second scrape/evaluation interval and scrapes both Node Exporters. Its targets now template Ansible group vars. Grafana datasource points to `127.0.0.1:9090` on the monitoring host and a dashboard has CPU, memory, disk, network, uptime, and target availability PromQL panels. Nagios host and service definitions use group vars and standard `check_ping`/`check_http` plugin commands. `commands.cfg` is not installed and contains only an include directive; retain it pending a Nagios config review. Nagios config validation, plugin availability, UI authentication, and live target status are unverified.
 
-- Nagios: no configuration or installation evidence.
-- Prometheus: no `prometheus.yml` or targets.
-- Grafana: no provisioning or dashboards.
-- Node Exporter: no configuration or running service evidence.
-- No monitoring endpoints or actual metric data were observed.
-- CPU, memory, disk and network dashboards cannot be claimed as working.
+### Scripts
 
-## G. Missing Components
+Health and recovery scripts have bounded checks/retries. Failure simulation stops the application container or Nginx and is intentionally not executed. Scripts now use LF endings and pass `bash -n`. Recovery commands have not been executed. No Python scripts exist.
 
-Required additions include:
+## Security review
 
-```text
-terraform/
-ansible/
-docker/
-app/
-monitoring/nagios/
-monitoring/prometheus/
-monitoring/grafana/
-scripts/
-.github/workflows/
-docs/
-README.md
-.env.example
-.gitignore
-Dockerfile
-compose.yaml
-```
+- No credentials or private-key values were found in the reviewed project files. This is a working-tree review, not a complete Git-history secret scan.
+- `.gitignore` covers `.env`, local tfvars, state, key/certificate suffixes, caches and logs. The provider lockfile exclusion was removed.
+- SSH uses a required admin CIDR variable. Ensure it is a current trusted `/32`; the example address is documentation-only.
+- Web HTTP is public by design. Admin interfaces are restricted to `admin_cidr`; exporter ingress is VPC-wide and should be narrowed to the monitoring security group when practical.
+- Nagios/Grafana password values are placeholders in the sample group variables; actual protected credentials and UI authentication have not been verified.
+- Recovery script logs may contain health URLs but do not intentionally print credentials. No scripts were executed.
+- CI deploys via SSH rather than AWS OIDC; no AWS credentials are presently in workflows. Use OIDC for future AWS API access, following [GitHub AWS OIDC guidance](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws).
+- Package permissions and production deployment protections need review before enabling CI deployment.
 
-The application source and existing deployment model could not be audited because they do not exist in the target folder or repository.
+## Validation
 
-## H. Blockers and Their Solutions
+Exact commands and results are in [docs/validation-report.md](docs/validation-report.md). YAML, JSON, JavaScript syntax, shell syntax, and Compose configuration checks passed. Terraform, Ansible, AWS CLI, actionlint, promtool, and Nagios validators were not available. There was no runtime or cloud validation.
 
-| Blocker | Solution |
-|---|---|
-| Target folder is empty | Decide whether to initialize the project here or create a dedicated repository folder |
-| AWS tooling missing | Install AWS CLI and configure temporary credentials or AWS Identity Center |
-| Infrastructure tools missing | Install Terraform and Ansible, preferably in WSL Ubuntu |
-| Docker engine stopped | Start Docker Desktop and enable Ubuntu WSL integration |
-| GitHub CLI missing | Install GitHub CLI and run `gh auth login` |
-| Repository location incorrect | Initialize or move the project to a dedicated repository location before implementation |
+## Three independent reviews
 
-## I. Prioritized Implementation Roadmap
+1. **Functionality:** Found missing app play in `site.yml` and literal monitor target placeholders. Both cross-file issues were corrected. Package-lock and remote deployment prerequisites remain.
+2. **Security/reliability:** Found unnecessary app SG loopback ingress and provider lockfile ignore; corrected both. Confirmed no secret-like values surfaced in the source review. Workflow permissions and server-side monitoring UI access remain to configure.
+3. **Completeness/maintainability:** Found stale audit/architecture language and duplicated `.env.example` keys; the prior audit was replaced and architecture/README updated. Per-folder status notes were updated; future setup commands still need to be exercised in WSL.
 
-1. Establish a dedicated project repository location.
-2. Repair `.gitignore` and secret-handling rules.
-3. Install GitHub CLI, AWS CLI, Terraform, Ansible and `jq`.
-4. Configure Docker Desktop and WSL integration.
-5. Configure AWS CLI authentication and region.
-6. Create Terraform infrastructure for two Ubuntu EC2 instances.
-7. Add remote Terraform state and backend protection.
-8. Create Ansible inventory and server configuration.
-9. Select or create the application and add Docker configuration.
-10. Configure Nginx on the web server.
-11. Create GitHub Actions validation and approval workflows.
-12. Install and configure Nagios.
-13. Install Prometheus and Node Exporter.
-14. Provision Grafana dashboards and alerts.
-15. Add Bash health checks and controlled recovery.
-16. Document failure simulation and end-to-end verification.
+## Integration matrix
 
-## J. Exact First Action
+| Component | Configuration present | Connection represented | Validation | Status |
+|---|---|---|---|---|
+| GitHub | Existing `origin` remote | Repository contains workflow definitions | Remote inspected; no push | Present, not remotely operated |
+| GitHub Actions | Three workflow files | Terraform/app/Ansible path triggers | YAML parse/static review only | Needs actionlint/CI and permission review |
+| Terraform | VPC, subnet, SGs, key pair, two EC2 resources | Outputs provide IPs for manual Ansible configuration | Terraform unavailable | Configured, unvalidated; backend incomplete |
+| AWS EC2 | Terraform resources only | Web and monitoring instances described | No AWS CLI/account or deployment used | Not provisioned |
+| Ansible | Inventory examples, site/web/monitoring/app playbooks and roles | Uses Terraform output values via local inventory/group vars | Ansible unavailable | Configured, unvalidated |
+| Docker | Dockerfile and Compose | Ansible and app workflow reference Compose/Dockerfile | Compose config passed; engine/build unavailable | Configured, not built |
+| Application | Express service and test source | Docker image uses app files | JS syntax passed; test blocked by missing Express | Source present, runtime unverified |
+| Nginx | Ansible role/template | Proxies loopback port 3000 to container | No Nginx validator/server | Configured, unverified |
+| Nagios | Host/service definitions and Ansible role | Checks host, HTTP, Nginx, exporter | No Nagios validator/server | Configured, unverified |
+| Prometheus | Scrape config/alert rules and role | Scrapes both Node Exporters | YAML parse only; no promtool/server | Configured, targets need real IPs |
+| Node Exporter | Ansible role on both hosts | Port 9100 allowed from VPC | No service/runtime test | Configured, unverified |
+| Grafana | Datasource, dashboard provider, JSON dashboard | Datasource points to local Prometheus | YAML/JSON syntax only | Provisioning present, live data unverified |
+| Scripts | Health/recovery/simulation | Installed by recovery role | `bash -n` passed; not executed | Syntax valid, behavior unverified |
+| Documentation | README, audit, architecture, guide, inventory, validation and remaining-work files | Links point to local docs | Link scan passed | Present; future setup still to be performed |
 
-Before implementation, run:
+## Readiness verdict
 
-```powershell
-cd "C:\Users\dixit\OneDrive\Desktop\aws automated server provision and health services"
-git rev-parse --show-toplevel
-git status --short --branch
-```
+**READY WITH BLOCKERS.** The repository is suitable for local implementation preparation. It is not ready for AWS deployment or a claim of full operation until toolchain checks, example configuration updates, package locking, deployment protections, remote-state preparation, and end-to-end validation are completed.
 
-Expected result:
-
-- The folder must be a dedicated repository or ready for repository initialization.
-- It must not report `C:\Users\dixit` as the repository root.
-- No unrelated user-profile files should be tracked.
-
-Do not run infrastructure commands, rewrite history or change remotes.
-
-## K. Files Needing Changes, Additions or No Changes
-
-### Changes
-
-- `C:\Users\dixit\.gitignore` — add Terraform state, environment, key and secret exclusions.
-- Repository location — migrate or initialize the project in a dedicated folder if approved.
-
-### Additions
-
-- `README.md`
-- `Dockerfile`
-- `compose.yaml`
-- `.env.example`
-- `terraform/*.tf`
-- `terraform/backend/*.tf`
-- `ansible/ansible.cfg`
-- `ansible/inventory/hosts.ini`
-- `ansible/playbook.yml`
-- `ansible/roles/**`
-- `.github/workflows/*.yml`
-- `monitoring/nagios/**`
-- `monitoring/prometheus/prometheus.yml`
-- `monitoring/grafana/**`
-- `scripts/health-check.sh`
-- `scripts/recover.sh`
-- Documentation and evidence files.
-
-### No Changes
-
-No existing project implementation files require changes because no project implementation files exist in the target repository.
-
-## L. Three-Round Review Results
-
-### Review 1: Functional Correctness
-
-**Performed**
-
-- Inspected repository tracking and branch.
-- Confirmed the target folder is empty.
-- Checked tracked files and commit.
-- Checked local tool availability.
-- Checked Docker and WSL integration status.
-- Checked for Terraform, Ansible, Docker, monitoring and workflow files.
-
-**Cannot yet be performed**
-
-- Terraform syntax and AWS plan.
-- Ansible syntax and server connectivity.
-- Docker build and application HTTP testing.
-- GitHub Actions execution.
-- Monitoring data and server health.
-- Failure and recovery testing.
-
-### Review 2: Security and Reliability
-
-**Performed**
-
-- Checked `.gitignore`.
-- Checked for state files and environment files.
-- Checked for private-key candidates.
-- Checked AWS, GitHub and Docker tool availability.
-
-**Findings**
-
-- Private SSH key exists at the user-profile level.
-- Repository ignore rules are insufficient.
-- Terraform state backend is absent.
-- AWS and GitHub authentication are not configured or cannot be verified.
-- Docker engine is stopped.
-- No security groups or monitoring exposure rules exist to review.
-
-**Cannot yet be performed**
-
-- EC2 security-group audit.
-- Terraform IAM and state audit.
-- SSH-key permission validation.
-- Secret and workflow-token audit.
-- Container volume and privilege audit.
-
-### Review 3: End-to-End Completeness
-
-**Performed**
-
-- Confirmed no end-to-end infrastructure implementation exists.
-
-**Cannot yet be performed**
-
-- EC2 provisioning.
-- Two-server configuration.
-- Docker application deployment.
-- Nginx HTTP verification.
-- GitHub Actions execution.
-- Nagios availability checks.
-- Prometheus metrics collection.
-- Grafana visualization.
-- Failure simulation and recovery.
-
-## Implementation Hold
-
-No files were modified or removed. No infrastructure, Docker resources or repository history were changed.
-
-Implementation must wait for explicit user approval.
+See [docs/remaining-work.md](docs/remaining-work.md) for the ordered checklist.

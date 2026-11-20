@@ -1,0 +1,24 @@
+---
+- name: Install recovery script directory
+  ansible.builtin.file:
+    path: /opt/aws-health-scripts
+    state: directory
+    mode: "0755"
+
+- name: Install health check script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../scripts/health_check.sh"
+    dest: /opt/aws-health-scripts/health_check.sh
+    mode: "0755"
+
+- name: Install controlled recovery script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../scripts/recover_service.sh"
+    dest: /opt/aws-health-scripts/recover_service.sh
+    mode: "0750"
+
+- name: Install failure simulation helper
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../scripts/simulate_failure.sh"
+    dest: /opt/aws-health-scripts/simulate_failure.sh
+    mode: "0750"

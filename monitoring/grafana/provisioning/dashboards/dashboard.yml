@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: "AWS DevOps Dashboards"
+    orgId: 1
+    folder: "AWS DevOps SRE"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

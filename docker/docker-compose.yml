@@ -1,0 +1,15 @@
+services:
+  app:
+    image: ghcr.io/OWNER/aws-health-app:TAG
+    container_name: aws-health-app
+    restart: unless-stopped
+    environment:
+      APP_PORT: "${APP_PORT:-3000}"
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

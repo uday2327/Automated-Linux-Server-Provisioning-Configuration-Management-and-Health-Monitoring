@@ -1,5 +1,3 @@
-# Application
+﻿# Application
 
-This directory will contain or reference the existing application source code. The application must be inspected before containerization or replacement.
-
-No application source or Docker configuration is implemented at this stage.
+A small Express service in `server.js` exposes `/health`, `/api/status`, and Prometheus-format `/metrics`. `npm test` exercises the endpoints. The runtime dependency is declared in `package.json`; a lock file is not yet present. Syntax checks passed, but tests could not run because Express is not installed locally.

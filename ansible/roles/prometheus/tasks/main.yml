@@ -1,0 +1,30 @@
+---
+- name: Install Prometheus packages
+  ansible.builtin.apt:
+    name:
+      - prometheus
+    state: present
+
+- name: Install Prometheus main configuration
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../monitoring/prometheus/prometheus.yml"
+    dest: /etc/prometheus/prometheus.yml
+    mode: "0644"
+  notify: Restart prometheus
+
+- name: Install Prometheus alert rules
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../monitoring/prometheus/alert_rules.yml"
+    dest: /etc/prometheus/alert_rules.yml
+    mode: "0644"
+  notify: Restart prometheus
+
+- name: Validate Prometheus configuration
+  ansible.builtin.command: promtool check config /etc/prometheus/prometheus.yml
+  changed_when: false
+
+- name: Enable and start Prometheus
+  ansible.builtin.systemd:
+    name: prometheus
+    enabled: true
+    state: started

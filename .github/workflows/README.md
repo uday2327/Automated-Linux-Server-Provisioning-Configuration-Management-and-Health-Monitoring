@@ -1,3 +1,3 @@
-# GitHub Actions Workflows
+﻿# GitHub Actions Workflows
 
-Future workflows will include Terraform validation and planning, intentional Terraform approval, application tests, Docker builds, GHCR publication and safeguarded deployment.
+See the workflow files in this directory and the repository [audit](../../DEVOPS_PROJECT_AUDIT.md). Workflow configuration has been reviewed statically but not run against GitHub. The production environment must have branch restrictions and required reviewers before deployment is enabled.

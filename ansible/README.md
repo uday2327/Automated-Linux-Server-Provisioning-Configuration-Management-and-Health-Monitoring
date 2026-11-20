@@ -1,5 +1,3 @@
-# Ansible
+﻿# Ansible
 
-This directory will contain the inventory, configuration and reusable playbooks or roles for configuring the web and monitoring servers.
-
-No server configuration or inventory is implemented at this stage.
+This directory configures the web and monitoring EC2 hosts. `playbooks/site.yml` sequences web setup, application deployment, and monitoring setup. Copy the example inventory and group variables to local ignored files, populate them from Terraform outputs, and run syntax checks before contacting servers. Ansible has not been installed or run as part of the audit.

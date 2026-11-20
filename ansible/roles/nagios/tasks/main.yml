@@ -1,0 +1,41 @@
+---
+- name: Install Nagios and plugins
+  ansible.builtin.apt:
+    name:
+      - nagios4
+      - nagios-plugins-contrib
+      - monitoring-plugins
+    state: present
+
+- name: Create project Nagios configuration directory
+  ansible.builtin.file:
+    path: /etc/nagios4/servers
+    state: directory
+    mode: "0755"
+
+- name: Install project host configuration
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../monitoring/nagios/hosts.cfg"
+    dest: /etc/nagios4/servers/hosts.cfg
+    mode: "0644"
+  notify: Validate and restart nagios
+
+- name: Install project service configuration
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../monitoring/nagios/services.cfg"
+    dest: /etc/nagios4/servers/services.cfg
+    mode: "0644"
+  notify: Validate and restart nagios
+
+- name: Include project configuration directory
+  ansible.builtin.lineinfile:
+    path: /etc/nagios4/nagios.cfg
+    regexp: '^cfg_dir=/etc/nagios4/servers'
+    line: "cfg_dir=/etc/nagios4/servers"
+  notify: Validate and restart nagios
+
+- name: Enable and start Nagios
+  ansible.builtin.systemd:
+    name: nagios
+    enabled: true
+    state: started

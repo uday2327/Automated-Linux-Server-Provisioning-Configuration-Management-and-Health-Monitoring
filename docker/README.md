@@ -1,5 +1,3 @@
-# Docker
+﻿# Docker
 
-This directory will contain Docker build and runtime configuration for the application and supporting services.
-
-No Docker implementation files are created at this stage.
+`Dockerfile` builds the Node.js app from the repository root. `docker-compose.yml` runs the image and binds host port 3000 to loopback for Nginx. Compose configuration parsed successfully; Docker Desktop's engine was unavailable, so no image build or container start was performed.
