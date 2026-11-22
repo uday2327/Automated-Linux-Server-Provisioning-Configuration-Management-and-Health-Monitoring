@@ -1,28 +1,24 @@
 ---
-- name: Install Grafana prerequisites
+- name: Install Grafana repository prerequisites
   ansible.builtin.apt:
     name:
       - apt-transport-https
       - software-properties-common
       - wget
     state: present
+    update_cache: true
 
-- name: Download Grafana key
+- name: Add Grafana signing key
   ansible.builtin.get_url:
     url: https://apt.grafana.com/gpg.key
-    dest: /tmp/grafana.gpg.key
+    dest: /etc/apt/keyrings/grafana.asc
     mode: "0644"
 
-- name: Add Grafana repository key
-  ansible.builtin.command: gpg --dearmor --yes --output /usr/share/keyrings/grafana.gpg /tmp/grafana.gpg.key
-  args:
-    creates: /usr/share/keyrings/grafana.gpg
-
-- name: Add Grafana repository
-  ansible.builtin.copy:
-    dest: /etc/apt/sources.list.d/grafana.list
-    mode: "0644"
-    content: "deb [signed-by=/usr/share/keyrings/grafana.gpg] https://apt.grafana.com stable main\n"
+- name: Add Grafana APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main"
+    filename: grafana
+    state: present
 
 - name: Install Grafana
   ansible.builtin.apt:
@@ -30,39 +26,47 @@
     state: present
     update_cache: true
 
-- name: Create Grafana provisioning directories
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    mode: "0755"
-  loop:
-    - /etc/grafana/provisioning/datasources
-    - /etc/grafana/provisioning/dashboards
-    - /var/lib/grafana/dashboards
-
-- name: Provision Prometheus datasource
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../monitoring/grafana/provisioning/datasources/prometheus.yml"
-    dest: /etc/grafana/provisioning/datasources/prometheus.yml
-    mode: "0644"
-  notify: Restart grafana
-
-- name: Provision dashboards
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../monitoring/grafana/provisioning/dashboards/dashboard.yml"
-    dest: /etc/grafana/provisioning/dashboards/dashboard.yml
-    mode: "0644"
-  notify: Restart grafana
-
-- name: Provision system dashboard
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../monitoring/grafana/provisioning/dashboards/system-health.json"
-    dest: /var/lib/grafana/dashboards/system-health.json
-    mode: "0644"
-  notify: Restart grafana
-
 - name: Enable and start Grafana
   ansible.builtin.systemd:
     name: grafana-server
     enabled: true
     state: started
+
+- name: Create Grafana provisioning directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: grafana
+    mode: "0750"
+  loop:
+    - /etc/grafana/provisioning/datasources
+    - /etc/grafana/provisioning/dashboards
+    - /var/lib/grafana/dashboards
+
+- name: Install Prometheus datasource provisioning
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../monitoring/grafana/provisioning/datasources/prometheus.yml"
+    dest: /etc/grafana/provisioning/datasources/prometheus.yml
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: Restart Grafana
+
+- name: Install dashboard provider configuration
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../monitoring/grafana/provisioning/dashboards/dashboard.yml"
+    dest: /etc/grafana/provisioning/dashboards/dashboard.yml
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: Restart Grafana
+
+- name: Install system health dashboard
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../monitoring/grafana/system-health.json"
+    dest: /var/lib/grafana/dashboards/system-health.json
+    owner: grafana
+    group: grafana
+    mode: "0640"
+  notify: Restart Grafana

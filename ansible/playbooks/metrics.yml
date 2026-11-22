@@ -1,0 +1,12 @@
+---
+- name: Install Node Exporter on all project servers
+  hosts: all
+  become: true
+  roles:
+    - node_exporter
+
+- name: Install Prometheus on monitoring server
+  hosts: monitoring
+  become: true
+  roles:
+    - prometheus

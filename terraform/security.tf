@@ -1,6 +1,6 @@
 resource "aws_security_group" "web" {
   name        = "${var.project_name}-web"
-  description = "Web server: SSH from admin, HTTP public, Node Exporter from VPC"
+  description = "Web server: administrator SSH, public HTTP, and internal Nagios ping checks"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -20,11 +20,19 @@ resource "aws_security_group" "web" {
   }
 
   ingress {
-    description = "Node Exporter from monitoring server VPC subnet"
-    from_port   = 9100
-    to_port     = 9100
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    description     = "ICMP ping checks from monitoring server"
+    from_port       = 8
+    to_port         = -1
+    protocol        = "icmp"
+    security_groups = [aws_security_group.monitoring.id]
+  }
+
+  ingress {
+    description     = "Node Exporter metrics from monitoring server"
+    from_port       = 9100
+    to_port         = 9100
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitoring.id]
   }
 
   egress {
@@ -41,29 +49,13 @@ resource "aws_security_group" "web" {
 
 resource "aws_security_group" "monitoring" {
   name        = "${var.project_name}-monitoring"
-  description = "Monitoring server: SSH and admin-only management"
+  description = "Monitoring server: SSH, Nagios UI, and internal ICMP checks"
   vpc_id      = aws_vpc.main.id
 
   ingress {
     description = "SSH from administrator"
     from_port   = 22
     to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.admin_cidr]
-  }
-
-  ingress {
-    description = "Prometheus from administrator"
-    from_port   = 9090
-    to_port     = 9090
-    protocol    = "tcp"
-    cidr_blocks = [var.admin_cidr]
-  }
-
-  ingress {
-    description = "Grafana from administrator"
-    from_port   = 3000
-    to_port     = 3000
     protocol    = "tcp"
     cidr_blocks = [var.admin_cidr]
   }
@@ -85,11 +77,11 @@ resource "aws_security_group" "monitoring" {
   }
 
   ingress {
-    description = "Node Exporter metrics from within VPC"
-    from_port   = 9100
-    to_port     = 9100
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    description = "ICMP ping checks within monitoring server security group"
+    from_port   = 8
+    to_port     = -1
+    protocol    = "icmp"
+    self        = true
   }
 
   egress {

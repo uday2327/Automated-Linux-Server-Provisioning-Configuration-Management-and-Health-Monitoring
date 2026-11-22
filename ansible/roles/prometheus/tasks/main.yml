@@ -1,27 +1,28 @@
 ---
-- name: Install Prometheus packages
+- name: Install Prometheus
   ansible.builtin.apt:
-    name:
-      - prometheus
+    name: prometheus
     state: present
+    update_cache: true
+    cache_valid_time: 3600
 
-- name: Install Prometheus main configuration
+- name: Install Prometheus scrape configuration
   ansible.builtin.template:
-    src: "{{ playbook_dir }}/../../monitoring/prometheus/prometheus.yml"
+    src: "{{ playbook_dir }}/../../monitoring/prometheus/prometheus.yml.j2"
     dest: /etc/prometheus/prometheus.yml
+    owner: root
+    group: root
     mode: "0644"
-  notify: Restart prometheus
+  notify: Restart Prometheus
 
 - name: Install Prometheus alert rules
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../../monitoring/prometheus/alert_rules.yml"
     dest: /etc/prometheus/alert_rules.yml
+    owner: root
+    group: root
     mode: "0644"
-  notify: Restart prometheus
-
-- name: Validate Prometheus configuration
-  ansible.builtin.command: promtool check config /etc/prometheus/prometheus.yml
-  changed_when: false
+  notify: Restart Prometheus
 
 - name: Enable and start Prometheus
   ansible.builtin.systemd:

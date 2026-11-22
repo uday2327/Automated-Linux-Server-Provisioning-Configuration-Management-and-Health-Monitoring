@@ -1,19 +1,14 @@
-name: Terraform CI
+﻿name: Terraform CI
 
 on:
   pull_request:
-    paths:
-      - "terraform/**"
   push:
-    branches: ["main"]
-    paths:
-      - "terraform/**"
 
 permissions:
   contents: read
 
 jobs:
-  terraform:
+  validate:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,3 +22,45 @@ jobs:
       - run: terraform fmt -check -recursive
       - run: terraform init -backend=false
       - run: terraform validate
+
+  plan:
+    if: ${{ vars.AWS_ROLE_ARN != '' && vars.TF_STATE_BUCKET != '' && vars.TF_STATE_KEY != '' && vars.TF_ADMIN_CIDR != '' && vars.TF_SSH_PUBLIC_KEY != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: terraform
+    env:
+      AWS_REGION: us-east-1
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      TF_STATE_KEY: ${{ vars.TF_STATE_KEY }}
+      TF_VAR_admin_cidr: ${{ vars.TF_ADMIN_CIDR }}
+      TF_SSH_PUBLIC_KEY: ${{ vars.TF_SSH_PUBLIC_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Prepare plan inputs
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$TF_SSH_PUBLIC_KEY" > "$RUNNER_TEMP/terraform-key.pub"
+          chmod 600 "$RUNNER_TEMP/terraform-key.pub"
+          echo "TF_VAR_ssh_public_key_path=$RUNNER_TEMP/terraform-key.pub" >> "$GITHUB_ENV"
+      - name: Initialize remote state and create plan
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=$TF_STATE_BUCKET" \
+            -backend-config="key=$TF_STATE_KEY" \
+            -backend-config="region=$AWS_REGION" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+          terraform plan -input=false

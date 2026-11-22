@@ -1,0 +1,8 @@
+project_name: aws-devops-sre
+ansible_user: ubuntu
+ansible_ssh_private_key_file: "~/.ssh/aws-devops-sre"
+ansible_python_interpreter: /usr/bin/python3
+web_private_ip: "10.20.1.216"
+monitoring_private_ip: "10.20.1.135"
+app_image: "ghcr.io/uday2327/aws-health-app:latest"
+app_port: 3000

@@ -1,5 +1,5 @@
-[web]
-web-server ansible_host=WEB_PRIVATE_OR_PUBLIC_IP ansible_user=ubuntu
+[webservers]
+web-server ansible_host=WEB_PUBLIC_IP
 
 [monitoring]
-monitoring-server ansible_host=MONITORING_PRIVATE_OR_PUBLIC_IP ansible_user=ubuntu
+monitoring-server ansible_host=MONITORING_PUBLIC_IP

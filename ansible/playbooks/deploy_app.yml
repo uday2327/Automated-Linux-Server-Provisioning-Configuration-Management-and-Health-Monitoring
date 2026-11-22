@@ -1,6 +1,6 @@
 ---
 - name: Deploy application container
-  hosts: web
+  hosts: webservers
   become: true
   tasks:
     - name: Create application directory

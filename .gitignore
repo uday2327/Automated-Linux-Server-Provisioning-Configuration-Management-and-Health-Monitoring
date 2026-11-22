@@ -77,3 +77,7 @@ monitoring/**/secrets/
 monitoring/**/.env
 grafana.ini
 nagiosadmin.passwd
+
+# Local Ansible inventory and host-specific variables
+ansible/inventory/hosts.ini
+ansible/group_vars/all.yml

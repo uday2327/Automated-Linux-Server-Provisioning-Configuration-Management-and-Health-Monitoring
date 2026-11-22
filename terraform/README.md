@@ -118,6 +118,6 @@ Never use destroy as routine troubleshooting. Preserve or back up state accordin
 - **Resource limit or quota error:** check the selected region's EC2 quota and instance availability before applying again.
 - **Unexpected plan replacement:** stop and inspect the changed attributes and current state before approving any change.
 
-## Validation status
+## Audit results
 
-Terraform was not installed on the audited Windows PATH, so `fmt`, `init`, and `validate` were not run locally. See [the validation report](../docs/validation-report.md) and [remaining work](../docs/remaining-work.md).
+The Terraform audit and local validation results are in [the audit report](../docs/terraform-audit-report.md), with the complete Terraform file list in [the file inventory](../docs/terraform-file-inventory.md). Terraform was run in WSL Ubuntu; no AWS resources were created.

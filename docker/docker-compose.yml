@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/OWNER/aws-health-app:TAG
+    image: "{{ app_image }}"
     container_name: aws-health-app
     restart: unless-stopped
     environment:

@@ -21,7 +21,7 @@ Prometheus <- Node Exporter on both EC2 instances
 Grafana -> Prometheus; Nagios -> host and HTTP checks
 ```
 
-The web host exposes HTTP on port 80. The application container binds to host loopback on port 3000, behind Nginx. SSH and monitoring UI ports are restricted to the configured administrator CIDR. Node Exporter is reachable only from within the VPC security-group range.
+The web host exposes HTTP on port 80. The application container binds to host loopback on port 3000, behind Nginx. SSH and monitoring UI ports are restricted to the configured administrator CIDR. Node Exporter is reachable only from the monitoring security group.
 
 ## Technology
 

@@ -1,51 +1,13 @@
 ---
-- name: Create node exporter system user
-  ansible.builtin.user:
-    name: node_exporter
-    shell: /usr/sbin/nologin
-    system: true
-    create_home: false
+- name: Install Node Exporter
+  ansible.builtin.apt:
+    name: prometheus-node-exporter
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
 
-- name: Download and unpack node exporter
-  ansible.builtin.unarchive:
-    src: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
-    dest: /opt
-    remote_src: true
-    creates: "/opt/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
-
-- name: Install node exporter binary
-  ansible.builtin.copy:
-    src: "/opt/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
-    dest: /usr/local/bin/node_exporter
-    remote_src: true
-    owner: root
-    group: root
-    mode: "0755"
-  notify: Restart node exporter
-
-- name: Install node exporter systemd unit
-  ansible.builtin.copy:
-    dest: /etc/systemd/system/node_exporter.service
-    mode: "0644"
-    content: |
-      [Unit]
-      Description=Prometheus Node Exporter
-      After=network.target
-
-      [Service]
-      User=node_exporter
-      Group=node_exporter
-      ExecStart=/usr/local/bin/node_exporter --web.listen-address=0.0.0.0:9100
-      Restart=always
-      RestartSec=5
-
-      [Install]
-      WantedBy=multi-user.target
-  notify: Restart node exporter
-
-- name: Enable node exporter
+- name: Enable and start Node Exporter
   ansible.builtin.systemd:
-    name: node_exporter
+    name: prometheus-node-exporter
     enabled: true
     state: started
-    daemon_reload: true

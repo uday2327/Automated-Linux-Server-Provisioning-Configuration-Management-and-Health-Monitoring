@@ -23,7 +23,7 @@ Nagios checks host reachability and web/Nginx HTTP endpoints.
 | Public clients | Web EC2 | 80 | Nginx and application | Public IPv4 |
 | Admin CIDR | Both EC2 | 22 | SSH | `var.admin_cidr` |
 | Admin CIDR | Monitor EC2 | 9090, 3000, 80, 443 | Prometheus, Grafana, Nagios UI | `var.admin_cidr` |
-| VPC CIDR | Both EC2 | 9100 | Node Exporter | VPC-wide CIDR |
+| Monitoring security group | Both EC2 | 9100 | Node Exporter scrape traffic | Security-group source; monitoring group can scrape its own instance |
 | Nginx on web EC2 | App container | 3000 | Reverse proxy | Host port bound to loopback |
 
 ## Integration status

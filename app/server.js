@@ -26,19 +26,6 @@ app.get("/api/status", (_request, response) => {
   });
 });
 
-app.get("/metrics", (_request, response) => {
-  const uptime = process.uptime();
-  const memory = process.memoryUsage();
-  response.type("text/plain").send([
-    "# HELP app_uptime_seconds Application process uptime.",
-    "# TYPE app_uptime_seconds gauge",
-    `app_uptime_seconds ${uptime.toFixed(3)}`,
-    "# HELP app_memory_bytes Resident application memory.",
-    "# TYPE app_memory_bytes gauge",
-    `app_memory_bytes ${memory.rss}`,
-  ].join("\n") + "\n");
-});
-
 if (require.main === module) {
   const port = Number(process.env.APP_PORT || 3000);
   app.listen(port, "0.0.0.0", () => {

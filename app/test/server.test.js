@@ -34,14 +34,3 @@ test("health endpoint returns JSON status", async () => {
   }
 });
 
-test("metrics endpoint exposes Prometheus text", async () => {
-  const server = await listen();
-  try {
-    const address = server.address();
-    const response = await fetch(`http://127.0.0.1:${address.port}/metrics`);
-    assert.equal(response.status, 200);
-    assert.match(await response.text(), /app_uptime_seconds/);
-  } finally {
-    server.close();
-  }
-});

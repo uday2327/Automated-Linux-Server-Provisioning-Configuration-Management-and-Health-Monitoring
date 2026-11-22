@@ -4,8 +4,5 @@
   become: true
   roles:
     - common
-    - node_exporter
-    - prometheus
-    - grafana
     - nagios
     - recovery_scripts

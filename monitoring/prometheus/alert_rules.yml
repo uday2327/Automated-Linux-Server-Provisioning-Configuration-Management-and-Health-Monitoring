@@ -1,13 +1,23 @@
 groups:
-  - name: infrastructure-alerts
+  - name: system-health
     rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Monitoring target is down'
+          description: 'Prometheus cannot scrape {{ $labels.instance }}.'
+
       - alert: HighCPUUsage
-        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "High CPU usage on {{ $labels.instance }}"
+          summary: 'High CPU usage'
+          description: 'CPU usage is above 80% on {{ $labels.instance }}.'
 
       - alert: HighMemoryUsage
         expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
@@ -15,20 +25,14 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "High memory usage on {{ $labels.instance }}"
+          summary: 'High memory usage'
+          description: 'Memory usage is above 85% on {{ $labels.instance }}.'
 
-      - alert: LowDiskSpace
-        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"})) * 100 > 85
-        for: 10m
+      - alert: HighDiskUsage
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"})) * 100 > 85
+        for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Low disk space on {{ $labels.instance }}"
-
-      - alert: TargetDown
-        expr: up == 0
-        for: 2m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Prometheus target is down: {{ $labels.instance }}"
+          summary: 'High disk usage'
+          description: 'Root filesystem usage is above 85% on {{ $labels.instance }}.'

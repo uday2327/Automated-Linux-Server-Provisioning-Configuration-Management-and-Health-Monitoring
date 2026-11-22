@@ -5,7 +5,7 @@ LOG_FILE="${HEALTH_LOG_FILE:-/var/log/health-recovery.log}"
 SERVICE=""
 
 usage() {
-  echo "Usage: $0 --service app|nginx|node_exporter"
+  echo "Usage: $0 --service app|nginx"
 }
 
 while (($#)); do
@@ -58,6 +58,5 @@ recover_service_unit() {
 case "$SERVICE" in
   app) recover_app ;;
   nginx) recover_service_unit nginx ;;
-  node_exporter) recover_service_unit node_exporter ;;
   *) log ERROR "invalid_service"; usage; exit 2 ;;
 esac

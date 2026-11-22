@@ -18,24 +18,39 @@
     src: "{{ playbook_dir }}/../../monitoring/nagios/hosts.cfg"
     dest: /etc/nagios4/servers/hosts.cfg
     mode: "0644"
-  notify: Validate and restart nagios
+  notify:
+    - Validate Nagios configuration
+    - Restart Nagios
 
 - name: Install project service configuration
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../../monitoring/nagios/services.cfg"
     dest: /etc/nagios4/servers/services.cfg
     mode: "0644"
-  notify: Validate and restart nagios
+  notify:
+    - Validate Nagios configuration
+    - Restart Nagios
+
+- name: Install project command configuration
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../../monitoring/nagios/commands.cfg"
+    dest: /etc/nagios4/servers/commands.cfg
+    mode: "0644"
+  notify:
+    - Validate Nagios configuration
+    - Restart Nagios
 
 - name: Include project configuration directory
   ansible.builtin.lineinfile:
     path: /etc/nagios4/nagios.cfg
     regexp: '^cfg_dir=/etc/nagios4/servers'
     line: "cfg_dir=/etc/nagios4/servers"
-  notify: Validate and restart nagios
+  notify:
+    - Validate Nagios configuration
+    - Restart Nagios
 
 - name: Enable and start Nagios
   ansible.builtin.systemd:
-    name: nagios
+    name: nagios4
     enabled: true
     state: started
