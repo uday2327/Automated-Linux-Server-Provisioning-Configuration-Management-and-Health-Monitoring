@@ -51,3 +51,41 @@ jobs:
             exit 1
           fi
           echo "Requested image: $APP_IMAGE"
+      - name: Install deployment tools
+        run: |
+          python3 -m pip install --user ansible-core==2.16.14 boto3==1.35.99
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          ansible-galaxy collection install -r ansible/requirements.yml
+          curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o /tmp/session-manager-plugin.deb
+          sudo dpkg -i /tmp/session-manager-plugin.deb
+      - name: Generate ephemeral SSM Ansible inventory
+        env:
+          WEB_INSTANCE_ID: ${{ vars.WEB_INSTANCE_ID }}
+          MONITORING_INSTANCE_ID: ${{ vars.MONITORING_INSTANCE_ID }}
+        run: |
+          set -euo pipefail
+          web=$(aws ec2 describe-instances --instance-ids "$WEB_INSTANCE_ID" --query "Reservations[0].Instances[0]" --output json)
+          monitoring=$(aws ec2 describe-instances --instance-ids "$MONITORING_INSTANCE_ID" --query "Reservations[0].Instances[0]" --output json)
+          web_private=$(jq -r '.PrivateIpAddress' <<<"$web")
+          monitoring_private=$(jq -r '.PrivateIpAddress' <<<"$monitoring")
+          cat > ansible/inventory/hosts.ssm.ini <<EOF
+          [webservers]
+          web-server ansible_host=$WEB_INSTANCE_ID ansible_connection=community.aws.aws_ssm ansible_python_interpreter=/usr/bin/python3
+
+          [monitoring]
+          monitoring-server ansible_host=$MONITORING_INSTANCE_ID ansible_connection=community.aws.aws_ssm ansible_python_interpreter=/usr/bin/python3
+
+          [all:vars]
+          ansible_aws_ssm_region=us-east-1
+          ansible_user=ubuntu
+          web_private_ip=$web_private
+          monitoring_private_ip=$monitoring_private
+          EOF
+      - name: Deploy the immutable application and configuration
+        env:
+          APP_IMAGE: ${{ inputs.app_image }}
+        run: |
+          ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook \
+            -i ansible/inventory/hosts.ssm.ini \
+            ansible/playbooks/site.yml \
+            -e "app_image=$APP_IMAGE"

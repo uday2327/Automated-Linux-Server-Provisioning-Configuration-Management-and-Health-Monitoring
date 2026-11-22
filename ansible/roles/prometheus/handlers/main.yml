@@ -3,6 +3,10 @@
   ansible.builtin.command: promtool check config /etc/prometheus/prometheus.yml
   changed_when: false
 
+- name: Validate Prometheus rules
+  ansible.builtin.command: promtool check rules /etc/prometheus/alert_rules.yml
+  changed_when: false
+
 - name: Restart Prometheus
   ansible.builtin.systemd:
     name: prometheus

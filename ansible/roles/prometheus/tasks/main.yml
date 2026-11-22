@@ -15,6 +15,7 @@
     mode: "0644"
   notify:
     - Validate Prometheus configuration
+    - Validate Prometheus rules
     - Restart Prometheus
 
 - name: Install Prometheus alert rules

@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Ansible validation tools
         run: |
-          python3 -m pip install --user ansible-core ansible-lint PyYAML
+          python3 -m pip install --user ansible-core==2.16.14 ansible-lint==24.12.2 PyYAML==6.0.2
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           ansible-galaxy collection install -r ansible/requirements.yml
       - name: Lint and check Ansible syntax

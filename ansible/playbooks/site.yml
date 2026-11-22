@@ -1,6 +1,11 @@
 ---
-- import_playbook: web.yml
-- import_playbook: deploy_app.yml
-- import_playbook: monitoring.yml
-- import_playbook: metrics.yml
-- import_playbook: grafana.yml
+- name: Configure Web Server
+  import_playbook: web.yml
+- name: Deploy the application
+  import_playbook: deploy_app.yml
+- name: Configure Monitoring Server
+  import_playbook: monitoring.yml
+- name: Configure metrics exporters and Prometheus
+  import_playbook: metrics.yml
+- name: Configure Grafana
+  import_playbook: grafana.yml
