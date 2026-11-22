@@ -63,4 +63,10 @@ jobs:
             -backend-config="region=$AWS_REGION" \
             -backend-config="encrypt=true" \
             -backend-config="use_lockfile=true"
-          terraform plan -input=false
+          terraform plan -input=false -out="$RUNNER_TEMP/terraform.tfplan"
+      - name: Upload Terraform plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: ${{ runner.temp }}/terraform.tfplan
+          if-no-files-found: error

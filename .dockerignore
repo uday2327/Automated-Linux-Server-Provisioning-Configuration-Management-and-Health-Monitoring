@@ -1,0 +1,17 @@
+.git
+.github
+.env
+.env.*
+node_modules
+app/node_modules
+terraform/.terraform
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/tfplan
+terraform/*.tfplan
+terraform/*.tfvars
+ansible/inventory/hosts.ini
+ansible/group_vars/all.yml
+ansible/inventory/group_vars/all.yml
+*.pem
+*.key

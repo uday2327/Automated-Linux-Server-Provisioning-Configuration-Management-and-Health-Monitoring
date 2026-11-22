@@ -22,7 +22,9 @@ jobs:
       - name: Lint and check Ansible syntax
         run: |
           ansible-lint ansible
-          ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/site.yml --syntax-check
+          for playbook in ansible/playbooks/*.yml; do
+            ansible-playbook -i ansible/inventory/hosts.ini.example "$playbook" --syntax-check
+          done
       - name: Parse YAML and check shell scripts
         run: |
           python3 - <<'PY'

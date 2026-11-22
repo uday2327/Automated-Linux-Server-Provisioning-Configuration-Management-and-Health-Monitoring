@@ -2,6 +2,8 @@
 
 This repository is a learning project for provisioning two Ubuntu EC2 servers with Terraform, configuring them with Ansible, deploying a small Node.js health application with Docker, and monitoring the servers with Nagios, Prometheus, Node Exporter, and Grafana.
 
+For implementation status and safe local commands, use [FINAL_VALIDATION_REPORT.md](docs/FINAL_VALIDATION_REPORT.md), [FINAL_SETUP_GUIDE.md](docs/FINAL_SETUP_GUIDE.md), [FINAL_CICD_GUIDE.md](docs/FINAL_CICD_GUIDE.md), and [FINAL_OPERATIONS_RUNBOOK.md](docs/FINAL_OPERATIONS_RUNBOOK.md).
+
 ## Current status
 
 The repository contains implementation files for the intended architecture, but it has not been deployed to AWS or verified end to end. Several settings remain examples that must be replaced with real Terraform outputs and protected local values. See the [audit](DEVOPS_PROJECT_AUDIT.md), [file inventory](docs/file-inventory.md), [validation report](docs/validation-report.md), and [remaining work](docs/remaining-work.md).

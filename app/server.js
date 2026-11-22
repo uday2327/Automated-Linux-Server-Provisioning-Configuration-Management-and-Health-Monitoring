@@ -3,6 +3,27 @@ const os = require("os");
 
 const app = express();
 const startedAt = Date.now();
+let healthRequestCount = 0;
+
+app.get("/metrics", (_request, response) => {
+  const uptimeSeconds = Math.floor((Date.now() - startedAt) / 1000);
+  response
+    .type("text/plain")
+    .send(
+      [
+        "# HELP app_health_requests_total Total number of health endpoint requests.",
+        "# TYPE app_health_requests_total counter",
+        `app_health_requests_total ${healthRequestCount}`,
+        "# HELP app_uptime_seconds Application process uptime in seconds.",
+        "# TYPE app_uptime_seconds gauge",
+        `app_uptime_seconds ${uptimeSeconds}`,
+        "# HELP app_info Application build information.",
+        "# TYPE app_info gauge",
+        'app_info{service="aws-health-app"} 1',
+        "",
+      ].join("\n"),
+    );
+});
 
 app.get("/", (_request, response) => {
   response.json({
@@ -13,6 +34,7 @@ app.get("/", (_request, response) => {
 });
 
 app.get("/health", (_request, response) => {
+  healthRequestCount += 1;
   response.json({
     status: "ok",
     uptime_seconds: Math.floor((Date.now() - startedAt) / 1000),

@@ -1,7 +1,7 @@
 FROM node:22-alpine3.20 AS dependencies
 WORKDIR /app
-COPY app/package.json ./package.json
-RUN npm install --omit=dev
+COPY app/package.json app/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
 
 FROM node:22-alpine3.20 AS runtime
 ENV NODE_ENV=production

@@ -19,6 +19,8 @@ jobs:
         working-directory: app
       - run: npm test
         working-directory: app
+      - run: node --check server.js
+        working-directory: app
       - run: docker build --file docker/Dockerfile --tag aws-health-app:test .
 
   publish:

@@ -84,6 +84,14 @@ resource "aws_security_group" "monitoring" {
     self        = true
   }
 
+  ingress {
+    description = "Node Exporter metrics within monitoring server security group"
+    from_port   = 9100
+    to_port     = 9100
+    protocol    = "tcp"
+    self        = true
+  }
+
   egress {
     from_port   = 0
     to_port     = 0

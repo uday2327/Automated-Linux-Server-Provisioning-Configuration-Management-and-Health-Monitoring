@@ -20,6 +20,9 @@ terraform.tfvars
 terraform.tfvars.json
 *.auto.tfvars
 *.auto.tfvars.json
+tfplan
+*.tfplan
+*.tfplan.*
 
 # SSH keys and certificates
 *.pem
@@ -81,3 +84,4 @@ nagiosadmin.passwd
 # Local Ansible inventory and host-specific variables
 ansible/inventory/hosts.ini
 ansible/group_vars/all.yml
+ansible/inventory/group_vars/all.yml

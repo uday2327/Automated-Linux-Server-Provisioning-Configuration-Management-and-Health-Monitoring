@@ -1,4 +1,8 @@
 ---
+- name: Validate Prometheus configuration
+  ansible.builtin.command: promtool check config /etc/prometheus/prometheus.yml
+  changed_when: false
+
 - name: Restart Prometheus
   ansible.builtin.systemd:
     name: prometheus
