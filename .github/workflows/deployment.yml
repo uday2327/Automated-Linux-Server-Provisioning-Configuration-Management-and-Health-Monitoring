@@ -29,6 +29,7 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: us-east-1
+          role-skip-session-tagging: true
       - name: Verify AWS identity
         run: aws sts get-caller-identity
       - name: Verify SSM access and instance registration
