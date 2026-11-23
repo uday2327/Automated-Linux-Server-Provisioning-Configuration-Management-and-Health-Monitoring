@@ -19,7 +19,8 @@ jobs:
     env:
       AWS_REGION: us-east-1
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Verify deployment configuration
         if: ${{ vars.WEB_INSTANCE_ID == '' || vars.MONITORING_INSTANCE_ID == '' }}
         run: |
@@ -28,7 +29,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: us-east-1
           role-session-name: gha-deploy
           role-skip-session-tagging: true
