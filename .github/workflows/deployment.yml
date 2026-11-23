@@ -21,76 +21,59 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Verify deployment configuration
-        if: ${{ vars.WEB_INSTANCE_ID == '' || vars.MONITORING_INSTANCE_ID == '' }}
+        env:
+          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
         run: |
-          echo "Required EC2 instance variables are not configured."
-          exit 1
+          set -euo pipefail
+          if [[ -z "$AWS_ROLE_ARN" ]]; then
+            echo "Required GitHub production environment variable is missing: AWS_ROLE_ARN"
+            exit 1
+          fi
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: us-east-1
-          role-session-name: github-actions
+          role-session-name: gha-deploy
           role-skip-session-tagging: true
-          audience: sts.amazonaws.com
+
       - name: Verify AWS identity
         run: aws sts get-caller-identity
-      - name: Verify SSM access and instance registration
-        env:
-          WEB_INSTANCE_ID: ${{ vars.WEB_INSTANCE_ID }}
-          MONITORING_INSTANCE_ID: ${{ vars.MONITORING_INSTANCE_ID }}
-        run: |
-          set -euo pipefail
-          aws ssm describe-instance-information \
-            --filters "Key=InstanceIds,Values=$WEB_INSTANCE_ID,$MONITORING_INSTANCE_ID" \
-            --query "InstanceInformationList[].InstanceId" \
-            --output text
-      - name: Record requested immutable image
+
+      - name: Validate requested immutable image
         env:
           APP_IMAGE: ${{ inputs.app_image }}
         run: |
-          if [[ ! "$APP_IMAGE" =~ ^ghcr\.io/.+@sha256:[0-9a-f]{64}$ ]] &&
-             [[ ! "$APP_IMAGE" =~ ^ghcr\.io/.+:[0-9a-f]{40,64}$ ]]; then
-            echo "APP_IMAGE must be a GHCR digest or 40/64-character commit-SHA tag."
+          set -euo pipefail
+          if [[ ! "$APP_IMAGE" =~ ^ghcr\.io/uday2327/aws-health-app@sha256:[0-9a-f]{64}$ ]] &&
+             [[ ! "$APP_IMAGE" =~ ^ghcr\.io/uday2327/aws-health-app:[0-9a-f]{40,64}$ ]]; then
+            echo "APP_IMAGE must be a digest or 40-64 character lowercase SHA tag for ghcr.io/uday2327/aws-health-app."
             exit 1
           fi
           echo "Requested image: $APP_IMAGE"
+
       - name: Install deployment tools
         run: |
-          python3 -m pip install --user ansible-core==2.16.14 boto3==1.35.99
+          set -euo pipefail
+          python3 -m pip install --user ansible-core==2.16.14
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           ansible-galaxy collection install -r ansible/requirements.yml
-          curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o /tmp/session-manager-plugin.deb
-          sudo dpkg -i /tmp/session-manager-plugin.deb
-      - name: Generate ephemeral SSM Ansible inventory
-        env:
-          WEB_INSTANCE_ID: ${{ vars.WEB_INSTANCE_ID }}
-          MONITORING_INSTANCE_ID: ${{ vars.MONITORING_INSTANCE_ID }}
-        run: |
-          set -euo pipefail
-          web=$(aws ec2 describe-instances --instance-ids "$WEB_INSTANCE_ID" --query "Reservations[0].Instances[0]" --output json)
-          monitoring=$(aws ec2 describe-instances --instance-ids "$MONITORING_INSTANCE_ID" --query "Reservations[0].Instances[0]" --output json)
-          web_private=$(jq -r '.PrivateIpAddress' <<<"$web")
-          monitoring_private=$(jq -r '.PrivateIpAddress' <<<"$monitoring")
-          cat > ansible/inventory/hosts.ssm.ini <<EOF
-          [webservers]
-          web-server ansible_host=$WEB_INSTANCE_ID ansible_connection=community.aws.aws_ssm ansible_python_interpreter=/usr/bin/python3
 
-          [monitoring]
-          monitoring-server ansible_host=$MONITORING_INSTANCE_ID ansible_connection=community.aws.aws_ssm ansible_python_interpreter=/usr/bin/python3
-
-          [all:vars]
-          ansible_aws_ssm_region=us-east-1
-          ansible_user=ubuntu
-          web_private_ip=$web_private
-          monitoring_private_ip=$monitoring_private
-          EOF
-      - name: Deploy the immutable application and configuration
+      - name: Deploy application with existing Ansible SSH inventory
         env:
           APP_IMAGE: ${{ inputs.app_image }}
         run: |
+          set -euo pipefail
           ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook \
-            -i ansible/inventory/hosts.ssm.ini \
+            -i ansible/inventory/hosts.ini \
             ansible/playbooks/site.yml \
             -e "app_image=$APP_IMAGE"
+
+      - name: Verify application health
+        run: |
+          set -euo pipefail
+          web_ip=$(awk '/^\[webservers\]/{found=1;next} found && $1=="web-server"{for(i=1;i<=NF;i++){if($i~/^ansible_host=/){split($i,a,"=");print a[2];exit}}}' ansible/inventory/hosts.ini)
+          curl --fail --silent --show-error --retry 6 --retry-delay 10 --max-time 5 "http://$web_ip/health"
