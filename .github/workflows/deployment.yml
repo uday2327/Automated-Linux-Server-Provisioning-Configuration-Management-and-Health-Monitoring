@@ -99,7 +99,39 @@ jobs:
             -e "app_image=$APP_IMAGE"
 
       - name: Verify application health
+        env:
+          WEB_INSTANCE_ID: ${{ vars.WEB_INSTANCE_ID }}
+          AWS_REGION: us-east-1
         run: |
           set -euo pipefail
-          web_ip=$(awk '/^\[webservers\]/{found=1;next} found && $1=="web-server"{for(i=1;i<=NF;i++){if($i~/^ansible_host=/){split($i,a,"=");print a[2];exit}}}' ansible/inventory/hosts.ini)
-          curl --fail --silent --show-error --retry 6 --retry-delay 10 --max-time 5 "http://$web_ip/health"
+
+          if [[ -z "${WEB_INSTANCE_ID:-}" ]]; then
+            echo "::error::WEB_INSTANCE_ID is missing."
+            exit 1
+          fi
+
+          state=$(aws ec2 describe-instances \
+            --instance-ids "$WEB_INSTANCE_ID" \
+            --query "Reservations[0].Instances[0].State.Name" \
+            --output text)
+
+          web_ip=$(aws ec2 describe-instances \
+            --instance-ids "$WEB_INSTANCE_ID" \
+            --query "Reservations[0].Instances[0].PublicIpAddress" \
+            --output text)
+
+          if [[ "$state" != "running" || -z "$web_ip" || "$web_ip" == "None" ]]; then
+            echo "::error::Web EC2 is not running or has no public IP."
+            exit 1
+          fi
+
+          echo "Checking application at http://$web_ip/health"
+
+          curl --fail --silent --show-error \
+            --retry 6 \
+            --retry-delay 10 \
+            --retry-connrefused \
+            --max-time 10 \
+            "http://$web_ip/health"
+
+          echo "Application health check passed."
